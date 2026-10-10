@@ -64,6 +64,9 @@ function get_kernel_version() {
   local ZIMAGE IMG_OFFSET
 
   _VER_RUN=""
+  # Newer Raspberry Pi OS (6.12+) has no /boot/kernel*.img; the running kernel
+  # version from uname is reliable there.
+  [ -d /lib/modules/$(uname -r)/build ] && _VER_RUN=$(uname -r)
   [ -z "$_VER_RUN" ] && {
     ZIMAGE=/boot/kernel.img
     [ -f /boot/firmware/vmlinuz ] && ZIMAGE=/boot/firmware/vmlinuz
@@ -77,6 +80,9 @@ function get_kernel_version() {
 }
 
 function check_kernel_headers() {
+  # Headers for the running kernel already installed: nothing to do
+  [ -d /lib/modules/$(uname -r)/build ] && return 0
+
   VER_RUN=$(get_kernel_version)
   VER_HDR=$(dpkg -L raspberrypi-kernel-headers | egrep -m1 "/lib/modules/[^\/]+/build" | awk -F'/' '{ print $4; }')
   [ "X$VER_RUN" == "X$VER_HDR" ] && {
@@ -106,12 +112,22 @@ function check_kernel_headers() {
 which apt &>/dev/null
 if [[ $? -eq 0 ]]; then
   apt update -y
-  # Raspbian kernel packages
-  apt-get -y install raspberrypi-kernel-headers raspberrypi-kernel
+  # Raspbian kernel packages (older: raspberrypi-kernel-*, newer: linux-headers-rpi-*)
+  if apt-cache show raspberrypi-kernel-headers 2>/dev/null | grep -q '^Package:'; then
+    apt-get -y install raspberrypi-kernel-headers raspberrypi-kernel
+  else
+    for _h in linux-headers-rpi-v8 linux-headers-rpi-2712 linux-headers-rpi-v7l linux-headers-rpi-v7; do
+      apt-get -y install $_h || continue
+      # stop at the flavour whose headers match the running kernel
+      [ -d /lib/modules/$(uname -r)/build ] && break
+    done
+  fi
   # Recent Raspbian has 64-bit kernel on 32-bit userspace
   apt-get -y install gcc-aarch64-linux-gnu
   # Ubuntu kernel packages
-  apt-get -y install linux-raspi linux-headers-raspi linux-image-raspi
+  if grep -qi ubuntu /etc/os-release; then
+    apt-get -y install linux-raspi linux-headers-raspi linux-image-raspi
+  fi
   apt-get -y install dkms git i2c-tools libasound2-plugins
   # rpi-update checker
   check_kernel_headers
