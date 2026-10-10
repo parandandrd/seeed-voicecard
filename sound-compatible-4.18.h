@@ -9,6 +9,14 @@
 
 #include <linux/version.h>
 
+/* Old master/slave DAI format names were removed in newer kernels */
+#ifndef SND_SOC_DAIFMT_CBM_CFM
+#define SND_SOC_DAIFMT_CBM_CFM	SND_SOC_DAIFMT_CBP_CFP
+#endif
+#ifndef SND_SOC_DAIFMT_CBS_CFS
+#define SND_SOC_DAIFMT_CBS_CFS	SND_SOC_DAIFMT_CBC_CFC
+#endif
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,17,0)
 #define __NO_SND_SOC_CODEC_DRV     1
 #else
