@@ -13,6 +13,7 @@
  * use 'make DEBUG=1' to enable debugging
  */
 #include <linux/module.h>
+#include <linux/version.h>
 #include <linux/moduleparam.h>
 #include <linux/init.h>
 #include <linux/delay.h>
@@ -265,6 +266,15 @@ static int snd_ac108_put_volsw(struct snd_kcontrol *kcontrol,
 	return ret;
 }
 
+/* v6.15: SOC_SINGLE_VALUE() gained an xmin argument */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,15,0)
+#define AC108_SOC_SINGLE_VALUE(reg, shift, max, invert, chip) \
+	SOC_SINGLE_VALUE(reg, shift, 0, max, invert, chip)
+#else
+#define AC108_SOC_SINGLE_VALUE(reg, shift, max, invert, chip) \
+	SOC_SINGLE_VALUE(reg, shift, max, invert, chip)
+#endif
+
 #define SOC_AC108_SINGLE_TLV(xname, reg, shift, max, invert, chip, tlv_array) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, \
 	.access = SNDRV_CTL_ELEM_ACCESS_TLV_READ |\
@@ -272,7 +282,7 @@ static int snd_ac108_put_volsw(struct snd_kcontrol *kcontrol,
 	.tlv.p = (tlv_array), \
 	.info = snd_soc_info_volsw, .get = snd_ac108_get_volsw,\
 	.put = snd_ac108_put_volsw, \
-	.private_value = SOC_SINGLE_VALUE(reg, shift, max, invert, chip) }
+	.private_value = AC108_SOC_SINGLE_VALUE(reg, shift, max, invert, chip) }
 
 /* single ac108 */
 static const struct snd_kcontrol_new ac108_snd_controls[] = {
