@@ -32,6 +32,20 @@
 
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,13,0)
+/*
+ * v6.15: simple_util_set_dailink_name() and simple_util_parse_card_name()
+ * take a struct simple_util_priv * instead of a device / card.  Only
+ * priv->snd_card is accessed, and it is the first member of struct
+ * seeed_card_data too, so the cast is safe.
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,15,0)
+#define seeed_dailink_name_arg(dev, priv)	((struct simple_util_priv *)(priv))
+#define seeed_card_name_arg(priv)		((struct simple_util_priv *)(priv))
+#else
+#define seeed_dailink_name_arg(dev, priv)	(dev)
+#define seeed_card_name_arg(priv)		(&(priv)->snd_card)
+#endif
+
 #define simple_util_parse_clk_cpu(dev, node, dai_link, simple_dai)      \
   simple_util_parse_clk(dev, node, simple_dai, dai_link->cpus)
 #define simple_util_parse_clk_codec(dev, node, dai_link, simple_dai)    \
@@ -540,7 +554,7 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
 	if (ret < 0)
 		goto dai_link_of_err;
 
-	ret = simple_util_set_dailink_name(dev, dai_link,
+	ret = simple_util_set_dailink_name(seeed_dailink_name_arg(dev, priv), dai_link,
 						"%s-%s",
 						dai_link->cpus->dai_name,
 						#if _SINGLE_CODEC
@@ -670,7 +684,7 @@ static int seeed_voice_card_parse_of(struct device_node *node,
 			goto card_parse_end;
 	}
 
-	ret = simple_util_parse_card_name(&priv->snd_card, PREFIX);
+	ret = simple_util_parse_card_name(seeed_card_name_arg(priv), PREFIX);
 	if (ret < 0)
 		goto card_parse_end;
 
